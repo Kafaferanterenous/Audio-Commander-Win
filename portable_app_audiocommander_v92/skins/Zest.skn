@@ -1,0 +1,18 @@
+; AudioCommander palette approximation derived from Zest.asz.
+[Skin]
+Format=1
+Name=Zest
+
+[Colors]
+Window=#F3F3E8
+Control=#DCE8EF
+Text=#000000
+Selection=#DBD96F
+SelectionText=#202000
+Border=#80827D
+HotBorder=#DBD96F
+ButtonTop=#F3F3E8
+ButtonBottom=#E7E7DC
+Summary=#FFFFF9
+SummaryText=#000000
+Progress=#D6CE76

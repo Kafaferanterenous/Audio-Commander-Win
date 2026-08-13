@@ -1,0 +1,40 @@
+AudioCommander v9.2 portable package
+====================================
+
+Runtime:
+
+- audiocommander_v92.exe
+- avcodec-63.dll
+- avformat-63.dll
+- avutil-61.dll
+- swresample-7.dll
+
+External palettes:
+
+- skins\Acryl.skn
+- skins\Air.skn
+- skins\MetroUI.skn
+- skins\Office2003.skn
+- skins\Office2007 Black.skn
+- skins\XPLuna.skn
+- skins\XPSilver.skn
+- skins\Zest.skn
+
+Documentation and licences:
+
+- README.txt
+- FFmpeg-LICENSE.txt
+- libopenmpt-LICENSE.txt
+- THIRD_PARTY_NOTICES.md
+- PACKAGE_SHA256.txt
+
+Corresponding source and build information:
+
+- source\FFmpeg-c23123630e-source.zip
+- source\build_ffmpeg_minimal.ps1
+- source\ffmpeg_minimal_config.txt
+- source\libopenmpt-0.8.7+release.msvc.zip
+- source\build_libopenmpt_small.txt
+
+Do not add a pre-accepted audiocommander.ini to a fresh distribution. The app
+must show its first-run notice to each new portable copy.

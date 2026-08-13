@@ -1,0 +1,29 @@
+# Candidate AudioCommander FFmpeg configuration (evaluation only)
+#
+# Build from a pinned official FFmpeg release without external codec libraries.
+# Confirm the final configure output and license before redistribution.
+
+--disable-everything
+--disable-autodetect
+--disable-programs
+--disable-doc
+--disable-debug
+--disable-network
+--disable-x86asm
+--enable-small
+--disable-avdevice
+--disable-avfilter
+--disable-swscale
+--enable-shared
+--disable-static
+--enable-avcodec
+--enable-avformat
+--enable-avutil
+--enable-swresample
+--enable-protocol=file
+--enable-demuxer=asf,flac,mov,mp3,ogg,wav
+--enable-parser=aac,flac,mpegaudio,opus,vorbis
+--enable-decoder=aac,alac,flac,mp3,opus,pcm_s16le,vorbis,wmav1,wmav2
+
+# Deliberately absent: --enable-gpl, --enable-version3, --enable-nonfree,
+# encoders, muxers, filters, devices, video codecs, and network protocols.

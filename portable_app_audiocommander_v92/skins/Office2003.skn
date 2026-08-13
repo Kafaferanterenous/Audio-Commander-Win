@@ -1,0 +1,18 @@
+; AudioCommander palette approximation derived from Office2003.asz.
+[Skin]
+Format=1
+Name=Office 2003
+
+[Colors]
+Window=#ECE9D8
+Control=#FFFDF4
+Text=#25354C
+Selection=#316AC5
+SelectionText=#FFFFFF
+Border=#AC9967
+HotBorder=#E68B2C
+ButtonTop=#FFF9DA
+ButtonBottom=#E2CC8F
+Summary=#F5E9BE
+SummaryText=#25354C
+Progress=#4B76B8

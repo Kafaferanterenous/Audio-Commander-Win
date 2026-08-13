@@ -1,0 +1,18 @@
+; AudioCommander palette approximation derived from MetroUI.asz.
+[Skin]
+Format=1
+Name=MetroUI
+
+[Colors]
+Window=#FFFFFF
+Control=#FFFFFF
+Text=#000000
+Selection=#00A9DA
+SelectionText=#FFFFFF
+Border=#C0C0C0
+HotBorder=#00A9DA
+ButtonTop=#FFFFFF
+ButtonBottom=#EBEBEB
+Summary=#F7F7F7
+SummaryText=#000000
+Progress=#31AD7C

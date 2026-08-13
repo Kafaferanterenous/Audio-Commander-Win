@@ -1,0 +1,18 @@
+; AudioCommander palette approximation derived from XPSilver.asz.
+[Skin]
+Format=1
+Name=XP Silver
+
+[Colors]
+Window=#D3D5DC
+Control=#FFFFFF
+Text=#000000
+Selection=#628CFF
+SelectionText=#FFFFFF
+Border=#A7A7BF
+HotBorder=#628CFF
+ButtonTop=#FFFFFF
+ButtonBottom=#CCCED9
+Summary=#F0F1F1
+SummaryText=#000000
+Progress=#7189BD

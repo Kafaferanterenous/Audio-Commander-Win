@@ -1,0 +1,18 @@
+; AudioCommander palette approximation derived from Acryl.asz.
+[Skin]
+Format=1
+Name=Acryl
+
+[Colors]
+Window=#EBEAEA
+Control=#FFFFFF
+Text=#000000
+Selection=#286EB2
+SelectionText=#FFFFFF
+Border=#C0C0C0
+HotBorder=#286EB2
+ButtonTop=#FFFFFF
+ButtonBottom=#E6E5E4
+Summary=#F0F0F0
+SummaryText=#000000
+Progress=#3A7BBF

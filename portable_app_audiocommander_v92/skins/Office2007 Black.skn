@@ -1,0 +1,18 @@
+; AudioCommander palette approximation derived from Office2007 Black.asz.
+[Skin]
+Format=1
+Name=Office 2007 Black
+
+[Colors]
+Window=#353535
+Control=#3C3D3D
+Text=#FFFFFF
+Selection=#F3A550
+SelectionText=#101010
+Border=#000000
+HotBorder=#F29D48
+ButtonTop=#525252
+ButtonBottom=#2F3030
+Summary=#494949
+SummaryText=#FFFFFF
+Progress=#2BA6FF

@@ -1,0 +1,18 @@
+; AudioCommander palette approximation derived from XPLuna.asz.
+[Skin]
+Format=1
+Name=XP Luna
+
+[Colors]
+Window=#F2EFDF
+Control=#FFFFFF
+Text=#000000
+Selection=#628CFF
+SelectionText=#FFFFFF
+Border=#7587DD
+HotBorder=#E68B2C
+ButtonTop=#FFFFFF
+ButtonBottom=#F3F0E2
+Summary=#DEEAFF
+SummaryText=#000000
+Progress=#4FA348

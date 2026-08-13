@@ -1,0 +1,22 @@
+AudioCommander libopenmpt static build
+======================================
+
+Pinned source:
+  libopenmpt-0.8.7+release.msvc.zip
+
+Source SHA-256:
+  663BD0432A991FD6CEC2F96D34BD125A04BA0AB169FBF1276FD936889465AD42
+
+Toolchain used:
+  Visual Studio 2026 Build Tools
+  MSVC platform toolset v145
+  x64 Release
+  static MSVC runtime (/MT)
+
+Build command (from the AudioCommander project root):
+
+  msbuild third_party\libopenmpt-0.8.7-source\build\vs2022win10\libopenmpt-small.sln /m /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v145 /p:SpectreMitigation=false /v:minimal
+
+The build produces libopenmpt-small.lib and the openmpt-minimp3,
+openmpt-miniz, and openmpt-stb_vorbis helper libraries. AudioCommander links
+all four statically; none is shipped as a runtime DLL.

@@ -1,0 +1,18 @@
+; AudioCommander palette approximation derived from Air.asz.
+[Skin]
+Format=1
+Name=Air
+
+[Colors]
+Window=#E7F1FE
+Control=#FFFFFF
+Text=#212121
+Selection=#F7F1B9
+SelectionText=#212121
+Border=#BACBE0
+HotBorder=#DECC02
+ButtonTop=#F4F8FF
+ButtonBottom=#DDEAF9
+Summary=#D2E2F5
+SummaryText=#212121
+Progress=#DECC02

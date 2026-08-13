@@ -1,0 +1,16 @@
+# Generated, temporary, and private runtime material
+.gradle/
+build/
+build-*/
+__pycache__/
+*.pyc
+logs/
+data/
+imports/
+*.apk
+*.aab
+*.pdb
+*.obj
+*.user
+*.suo
+*.DS_Store
