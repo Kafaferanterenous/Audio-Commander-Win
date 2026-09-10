@@ -3,7 +3,7 @@
 #include <stddef.h>
 
 static const wchar_t *const english[UI_COUNT] = {
-    L"AudioCommander v9.2", L"AudioCommander Settings", L"AudioCommander v9.2 Help",
+    L"AudioCommander v9.3", L"AudioCommander Settings", L"AudioCommander v9.3 Help",
     L"AudioCommander", L"Unknown Windows error.", L"%ls failed.\n\n%ls",
     L"Select an audio file to view its information.",
     L"The selected path is too long to display.",
@@ -63,7 +63,7 @@ static const wchar_t *const english[UI_COUNT] = {
 };
 
 static const wchar_t *const chinese[UI_COUNT] = {
-    L"AudioCommander v9.2", L"AudioCommander 设置", L"AudioCommander v9.2 帮助",
+    L"AudioCommander v9.3", L"AudioCommander 设置", L"AudioCommander v9.3 帮助",
     L"AudioCommander", L"未知的 Windows 错误。", L"%ls 失败。\n\n%ls",
     L"请选择音频文件以查看信息。", L"所选路径太长，无法显示。",
     L"文件夹\r\n名称：%ls\r\n路径：%ls", L"压缩编解码器不适用",
@@ -112,7 +112,7 @@ static const wchar_t *const chinese[UI_COUNT] = {
 };
 
 static const wchar_t *const italian[UI_COUNT] = {
-    L"AudioCommander v9.2", L"Impostazioni di AudioCommander", L"Guida di AudioCommander v9.2",
+    L"AudioCommander v9.3", L"Impostazioni di AudioCommander", L"Guida di AudioCommander v9.3",
     L"AudioCommander", L"Errore Windows sconosciuto.", L"%ls non riuscito.\n\n%ls",
     L"Selezionare un file audio per visualizzarne le informazioni.",
     L"Il percorso selezionato è troppo lungo da visualizzare.",
@@ -172,7 +172,7 @@ static const wchar_t *const italian[UI_COUNT] = {
 };
 
 static const wchar_t *const polish[UI_COUNT] = {
-    L"AudioCommander v9.2", L"Ustawienia AudioCommander", L"Pomoc AudioCommander v9.2",
+    L"AudioCommander v9.3", L"Ustawienia AudioCommander", L"Pomoc AudioCommander v9.3",
     L"AudioCommander", L"Nieznany błąd systemu Windows.", L"Operacja %ls nie powiodła się.\n\n%ls",
     L"Wybierz plik audio, aby wyświetlić informacje.", L"Wybrana ścieżka jest zbyt długa do wyświetlenia.",
     L"Folder\r\nNazwa: %ls\r\nŚcieżka: %ls", L"Nie dotyczy kodeka skompresowanego",

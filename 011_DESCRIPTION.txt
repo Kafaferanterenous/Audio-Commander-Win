@@ -1,4 +1,4 @@
-AudioCommander portable dual-pane audio utility experiments
+AudioCommander v9.3 portable dual-pane audio utility experiments
 
 Native Windows C11/Win32 portable audio-browser and playback experiments with
 versioned source, tests, and documented third-party audio notices. Compiled

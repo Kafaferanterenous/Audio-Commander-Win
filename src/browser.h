@@ -15,6 +15,7 @@ typedef struct BrowserEntry {
     BrowserEntryKind kind;
     unsigned long long size;
     unsigned long duration_ms;
+    unsigned long long entry_id;
 } BrowserEntry;
 
 typedef struct BrowserListing {

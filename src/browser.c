@@ -4,8 +4,8 @@
 #include <wchar.h>
 #include <wctype.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
-#include "media_info.h"
 
 static wchar_t *duplicate_text(const wchar_t *text)
 {
@@ -69,19 +69,47 @@ static int compare_entries(const BrowserEntry *left, const BrowserEntry *right,
 
 void browser_listing_sort(BrowserListing *listing, BrowserSortColumn column, bool descending)
 {
-    size_t index;
+    BrowserEntry *scratch;
+    BrowserEntry *source;
+    BrowserEntry *destination;
+    size_t width;
     if (listing == NULL || listing->entries == NULL) return;
-    for (index = 1; index < listing->count; ++index) {
-        BrowserEntry entry = listing->entries[index];
-        size_t destination = index;
-        while (destination > 0 &&
-               compare_entries(&entry, &listing->entries[destination - 1],
-                               column, descending) < 0) {
-            listing->entries[destination] = listing->entries[destination - 1];
-            --destination;
+    if (listing->count < 2 || listing->count > SIZE_MAX / sizeof(*scratch)) return;
+    scratch = (BrowserEntry *)malloc(listing->count * sizeof(*scratch));
+    if (scratch == NULL) return;
+    source = listing->entries;
+    destination = scratch;
+    for (width = 1; width < listing->count;) {
+        size_t start;
+        size_t block = width > SIZE_MAX / 2 ? SIZE_MAX : width * 2;
+        for (start = 0; start < listing->count;) {
+            size_t left = start;
+            size_t middle = start + min(width, listing->count - start);
+            size_t right = middle;
+            size_t end = middle + min(width, listing->count - middle);
+            size_t output = start;
+            while (left < middle && right < end) {
+                if (compare_entries(&source[left], &source[right], column, descending) <= 0)
+                    destination[output++] = source[left++];
+                else
+                    destination[output++] = source[right++];
+            }
+            while (left < middle) destination[output++] = source[left++];
+            while (right < end) destination[output++] = source[right++];
+            if (block >= listing->count - start) break;
+            start += block;
         }
-        listing->entries[destination] = entry;
+        {
+            BrowserEntry *swap = source;
+            source = destination;
+            destination = swap;
+        }
+        if (width > listing->count / 2) break;
+        width *= 2;
     }
+    if (source != listing->entries)
+        memcpy(listing->entries, source, listing->count * sizeof(*source));
+    free(scratch);
 }
 
 void browser_listing_summary(const BrowserListing *listing, BrowserListingSummary *summary)
@@ -192,11 +220,7 @@ bool browser_list_folder(const wchar_t *folder, BrowserListing *listing)
         }
         entry.size = ((unsigned long long)data.nFileSizeHigh << 32) | data.nFileSizeLow;
         entry.duration_ms = 0;
-        if (entry.kind == BROWSER_ENTRY_AUDIO_FILE) {
-            wchar_t full_path[MAX_PATH];
-            if (browser_join_path(folder, entry.name, full_path, _countof(full_path)))
-                entry.duration_ms = media_duration_ms(full_path);
-        }
+        entry.entry_id = count + 1;
         if (count == capacity) {
             size_t new_capacity = capacity == 0 ? 32 : capacity * 2;
             BrowserEntry *grown = (BrowserEntry *)realloc(entries, new_capacity * sizeof(*grown));
@@ -214,7 +238,6 @@ bool browser_list_folder(const wchar_t *folder, BrowserListing *listing)
     FindClose(search);
     listing->entries = entries;
     listing->count = count;
-    browser_listing_sort(listing, BROWSER_SORT_NAME, false);
     return true;
 }
 

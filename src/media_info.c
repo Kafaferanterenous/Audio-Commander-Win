@@ -111,17 +111,33 @@ static int mp3_bitrate_mode(const wchar_t *path)
     return mode;
 }
 
-static BOOL ffmpeg_available(void)
+static INIT_ONCE ffmpeg_init_once = INIT_ONCE_STATIC_INIT;
+static HMODULE ffmpeg_modules[3];
+static BOOL ffmpeg_ready;
+
+static BOOL CALLBACK initialize_ffmpeg(PINIT_ONCE once, PVOID parameter, PVOID *context)
 {
-    static HMODULE modules[3];
     static const wchar_t *names[3] = {L"avutil-61.dll", L"avcodec-63.dll", L"avformat-63.dll"};
     int index;
-    if (modules[2] != NULL) return TRUE;
+    (void)once;
+    (void)parameter;
+    (void)context;
     for (index = 0; index < 3; ++index) {
-        modules[index] = LoadLibraryExW(names[index], NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR);
-        if (modules[index] == NULL) return FALSE;
+        ffmpeg_modules[index] = LoadLibraryExW(
+            names[index], NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR);
+        if (ffmpeg_modules[index] == NULL) {
+            while (index > 0) FreeLibrary(ffmpeg_modules[--index]);
+            return TRUE;
+        }
     }
+    ffmpeg_ready = TRUE;
     return TRUE;
+}
+
+static BOOL ffmpeg_available(void)
+{
+    if (!InitOnceExecuteOnce(&ffmpeg_init_once, initialize_ffmpeg, NULL, NULL)) return FALSE;
+    return ffmpeg_ready;
 }
 
 static void utf8_to_wide(const char *source, wchar_t *destination, size_t count)

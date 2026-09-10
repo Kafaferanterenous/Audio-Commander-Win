@@ -1,0 +1,31 @@
+AudioCommander v9.3 portable package
+====================================
+
+Runtime:
+
+- audiocommander_v93.exe
+- avcodec-63.dll
+- avformat-63.dll
+- avutil-61.dll
+- swresample-7.dll
+- libopenmpt.dll
+- openmpt-mpg123.dll
+- openmpt-ogg.dll
+- openmpt-vorbis.dll
+- openmpt-zlib.dll
+
+External palettes:
+
+- skins\Acryl.skn
+- skins\Air.skn
+- skins\MetroUI.skn
+- skins\Office2003.skn
+- skins\Office2007 Black.skn
+- skins\XPLuna.skn
+- skins\XPSilver.skn
+- skins\Zest.skn
+
+Documentation, licences, hashes, exact dependency versions, and upstream links
+are included. Dependency archives are excluded from this sanitized GitHub
+snapshot because their upstream test trees contain audio/media fixtures. The
+package contains no audiocommander.ini and no music or audio files.

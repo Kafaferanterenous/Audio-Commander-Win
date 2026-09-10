@@ -7,6 +7,7 @@
 #include <wchar.h>
 #include <wctype.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "browser.h"
@@ -16,6 +17,7 @@
 #include "file_ops.h"
 #include "copy_progress.h"
 #include "media_info.h"
+#include "metadata_loader.h"
 #include "localization.h"
 
 #define TR(id) localization_text(app_settings.language, (id))
@@ -25,6 +27,7 @@
 #define HELP_CLASS L"AudioCommanderHelp"
 #define PATH_CAPACITY 32768
 #define WM_NAVIGATE_PATH (WM_APP + 1)
+#define WM_METADATA_BATCH (WM_APP + 2)
 
 enum { ID_SETTINGS = 10,
        ID_INFO, ID_HELP, ID_PROGRESS, ID_VOLUME,
@@ -51,6 +54,10 @@ typedef struct Pane {
     BrowserListing listing;
     BrowserSortColumn sort_column;
     BOOL sort_descending;
+    LONG metadata_generation;
+    BOOL metadata_loading;
+    size_t *entry_index_by_id;
+    size_t entry_index_capacity;
 } Pane;
 
 static Pane panes[2];
@@ -77,6 +84,7 @@ static HWND swap_button;
 static HWND stop_button;
 static HWND refresh_all_button;
 static BOOL info_visible;
+static MetadataLoader *metadata_loader;
 
 static void fill_pane(HWND owner, Pane *pane, const wchar_t *requested_folder);
 static void stop_playback(void);
@@ -750,6 +758,153 @@ static void update_directory_summary(Pane *pane)
     SetWindowTextW(pane->summary_label, text);
 }
 
+static void render_pane_rows(Pane *pane)
+{
+    size_t index;
+    if (pane == NULL || pane->list == NULL) return;
+    if (pane->listing.count < SIZE_MAX &&
+        pane->entry_index_capacity < pane->listing.count + 1) {
+        size_t *grown = (size_t *)realloc(
+            pane->entry_index_by_id,
+            (pane->listing.count + 1) * sizeof(*pane->entry_index_by_id));
+        if (grown != NULL) {
+            pane->entry_index_by_id = grown;
+            pane->entry_index_capacity = pane->listing.count + 1;
+        }
+    }
+    if (pane->listing.count < SIZE_MAX &&
+        pane->entry_index_capacity >= pane->listing.count + 1) {
+        for (index = 0; index <= pane->listing.count; ++index)
+            pane->entry_index_by_id[index] = SIZE_MAX;
+        for (index = 0; index < pane->listing.count; ++index) {
+            unsigned long long id = pane->listing.entries[index].entry_id;
+            if (id <= pane->listing.count)
+                pane->entry_index_by_id[(size_t)id] = index;
+        }
+    }
+    SendMessageW(pane->list, WM_SETREDRAW, FALSE, 0);
+    ListView_DeleteAllItems(pane->list);
+    for (index = 0; index < pane->listing.count; ++index) {
+        const BrowserEntry *entry = &pane->listing.entries[index];
+        LVITEMW item = {0};
+        wchar_t size_text[32] = L"";
+        item.mask = LVIF_TEXT | LVIF_PARAM;
+        item.iItem = (int)index;
+        item.pszText = entry->name;
+        item.lParam = (LPARAM)index;
+        ListView_InsertItem(pane->list, &item);
+        if (entry->kind == BROWSER_ENTRY_DIRECTORY) {
+            ListView_SetItemText(pane->list, (int)index, 1, (LPWSTR)TR(UI_FOLDER_LABEL));
+        } else {
+            wchar_t duration[32] = L"--:--";
+            if (entry->duration_ms > 0) {
+                unsigned long seconds = entry->duration_ms / 1000;
+                swprintf_s(duration, ARRAYSIZE(duration), L"%lu:%02lu",
+                           seconds / 60, seconds % 60);
+            }
+            swprintf_s(size_text, ARRAYSIZE(size_text), L"%llu KB",
+                       (entry->size + 1023) / 1024);
+            ListView_SetItemText(pane->list, (int)index, 1, size_text);
+            ListView_SetItemText(pane->list, (int)index, 2, duration);
+        }
+    }
+    SendMessageW(pane->list, WM_SETREDRAW, TRUE, 0);
+    RedrawWindow(pane->list, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+}
+
+static unsigned long long *capture_selected_entry_ids(Pane *pane, size_t *selected_count)
+{
+    unsigned long long *ids;
+    size_t capacity;
+    int item = -1;
+    *selected_count = 0;
+    capacity = (size_t)ListView_GetSelectedCount(pane->list);
+    if (capacity == 0 || capacity > SIZE_MAX / sizeof(*ids)) return NULL;
+    ids = (unsigned long long *)calloc(capacity, sizeof(*ids));
+    if (ids == NULL) return NULL;
+    while (*selected_count < capacity &&
+           (item = ListView_GetNextItem(pane->list, item, LVNI_SELECTED)) >= 0) {
+        if ((size_t)item < pane->listing.count)
+            ids[(*selected_count)++] = pane->listing.entries[item].entry_id;
+    }
+    return ids;
+}
+
+static void restore_selected_entry_ids(Pane *pane,
+                                       const unsigned long long *ids,
+                                       size_t selected_count)
+{
+    size_t index;
+    BOOL focused = FALSE;
+    for (index = 0; index < pane->listing.count; ++index) {
+        size_t selected_index;
+        for (selected_index = 0; selected_index < selected_count; ++selected_index) {
+            if (pane->listing.entries[index].entry_id == ids[selected_index]) {
+                UINT state = LVIS_SELECTED | (focused ? 0 : LVIS_FOCUSED);
+                ListView_SetItemState(pane->list, (int)index, state,
+                                      LVIS_SELECTED | LVIS_FOCUSED);
+                focused = TRUE;
+                break;
+            }
+        }
+    }
+}
+
+static void sort_existing_pane(Pane *pane)
+{
+    size_t selected_count = 0;
+    unsigned long long *selected_ids = capture_selected_entry_ids(pane, &selected_count);
+    browser_listing_sort(&pane->listing, pane->sort_column, pane->sort_descending != FALSE);
+    render_pane_rows(pane);
+    if (selected_ids != NULL)
+        restore_selected_entry_ids(pane, selected_ids, selected_count);
+    free(selected_ids);
+    update_sort_header(pane);
+    update_directory_summary(pane);
+    update_info_panel(pane);
+    update_operation_state();
+}
+
+static void apply_metadata_batch(MetadataBatch *batch)
+{
+    Pane *pane;
+    size_t update_index;
+    if (batch == NULL || batch->pane_index >= ARRAYSIZE(panes)) return;
+    pane = &panes[batch->pane_index];
+    if (batch->generation != pane->metadata_generation) return;
+    for (update_index = 0; update_index < batch->count; ++update_index) {
+        unsigned long long id = batch->updates[update_index].entry_id;
+        size_t entry_index = SIZE_MAX;
+        BrowserEntry *entry;
+        wchar_t duration[32] = L"--:--";
+        if (id < pane->entry_index_capacity)
+            entry_index = pane->entry_index_by_id[(size_t)id];
+        if (entry_index >= pane->listing.count ||
+            pane->listing.entries[entry_index].entry_id != id) {
+            for (entry_index = 0; entry_index < pane->listing.count; ++entry_index) {
+                if (pane->listing.entries[entry_index].entry_id == id) break;
+            }
+            if (entry_index == pane->listing.count) continue;
+        }
+        entry = &pane->listing.entries[entry_index];
+        entry->duration_ms = batch->updates[update_index].duration_ms;
+        if (entry->duration_ms > 0) {
+            unsigned long seconds = entry->duration_ms / 1000;
+            swprintf_s(duration, ARRAYSIZE(duration), L"%lu:%02lu",
+                       seconds / 60, seconds % 60);
+        }
+        ListView_SetItemText(pane->list, (int)entry_index, 2, duration);
+    }
+    if (batch->complete) {
+        pane->metadata_loading = FALSE;
+        if (pane->sort_column == BROWSER_SORT_DURATION) {
+            sort_existing_pane(pane);
+            return;
+        }
+    }
+    if (batch->complete) update_directory_summary(pane);
+}
+
 static void fill_pane(HWND owner, Pane *pane, const wchar_t *requested_folder)
 {
     wchar_t *folder;
@@ -757,6 +912,7 @@ static void fill_pane(HWND owner, Pane *pane, const wchar_t *requested_folder)
     wchar_t **selected_names = NULL;
     size_t selected_count = 0;
     size_t index;
+    size_t pane_index;
     if (pane == NULL || requested_folder == NULL || pane->path_edit == NULL ||
         pane->drive_combo == NULL || pane->list == NULL) {
         SetLastError(ERROR_INVALID_WINDOW_HANDLE);
@@ -792,29 +948,7 @@ static void fill_pane(HWND owner, Pane *pane, const wchar_t *requested_folder)
     free(folder);
     SetWindowTextW(pane->path_edit, pane->folder);
     refresh_drive_list(pane);
-    ListView_DeleteAllItems(pane->list);
-    for (index = 0; index < pane->listing.count; ++index) {
-        const BrowserEntry *entry = &pane->listing.entries[index];
-        LVITEMW item = {0};
-        wchar_t size_text[32] = L"";
-        item.mask = LVIF_TEXT | LVIF_PARAM;
-        item.iItem = (int)index;
-        item.pszText = entry->name;
-        item.lParam = (LPARAM)index;
-        ListView_InsertItem(pane->list, &item);
-        if (entry->kind == BROWSER_ENTRY_DIRECTORY) {
-            ListView_SetItemText(pane->list, (int)index, 1, (LPWSTR)TR(UI_FOLDER_LABEL));
-        } else {
-            wchar_t duration[32] = L"--:--";
-            if (entry->duration_ms > 0) {
-                unsigned long seconds = entry->duration_ms / 1000;
-                swprintf_s(duration, ARRAYSIZE(duration), L"%lu:%02lu", seconds / 60, seconds % 60);
-            }
-            swprintf_s(size_text, ARRAYSIZE(size_text), L"%llu KB", (entry->size + 1023) / 1024);
-            ListView_SetItemText(pane->list, (int)index, 1, size_text);
-            ListView_SetItemText(pane->list, (int)index, 2, duration);
-        }
-    }
+    render_pane_rows(pane);
     update_sort_header(pane);
     update_directory_summary(pane);
     if (selected_names != NULL) {
@@ -837,6 +971,19 @@ static void fill_pane(HWND owner, Pane *pane, const wchar_t *requested_folder)
     }
     update_info_panel(pane);
     update_operation_state();
+    pane_index = (size_t)(pane - panes);
+    pane->metadata_generation = InterlockedIncrement(&pane->metadata_generation);
+    if (pane->metadata_generation <= 0) {
+        InterlockedExchange(&pane->metadata_generation, 1);
+        pane->metadata_generation = 1;
+    }
+    pane->metadata_loading = FALSE;
+    if (metadata_loader != NULL) {
+        metadata_loader_cancel(metadata_loader, pane_index, pane->metadata_generation);
+        pane->metadata_loading = metadata_loader_submit(
+            metadata_loader, pane_index, pane->metadata_generation,
+            pane->folder, &pane->listing);
+    }
 }
 
 static void navigate_edit(HWND owner, Pane *pane)
@@ -1703,6 +1850,8 @@ static LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM w_param, L
             free(saved_right);
             return -1;
         }
+        metadata_loader = metadata_loader_create(window, WM_METADATA_BATCH,
+                                                 ARRAYSIZE(panes), NULL, NULL);
         if (GetCurrentDirectoryW(PATH_CAPACITY, current) == 0) {
             free(current);
             free(saved_left);
@@ -1868,7 +2017,7 @@ static LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM w_param, L
                         panes[index].sort_column = column;
                         panes[index].sort_descending = FALSE;
                     }
-                    fill_pane(window, &panes[index], panes[index].folder);
+                    sort_existing_pane(&panes[index]);
                     return 0;
                 }
             }
@@ -1965,6 +2114,12 @@ static LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM w_param, L
         }
         break;
     }
+    case WM_METADATA_BATCH: {
+        MetadataBatch *batch = (MetadataBatch *)l_param;
+        apply_metadata_batch(batch);
+        metadata_batch_free(batch);
+        return 0;
+    }
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORLISTBOX:
         SetTextColor((HDC)w_param, app_colors.text);
@@ -1983,12 +2138,22 @@ static LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM w_param, L
         SetBkColor((HDC)w_param, app_colors.window);
         return (LRESULT)app_background_brush;
     case WM_DESTROY:
+        if (metadata_loader != NULL) {
+            MSG pending;
+            (void)metadata_loader_shutdown(metadata_loader, 2000);
+            metadata_loader = NULL;
+            while (PeekMessageW(&pending, window, WM_METADATA_BATCH,
+                                WM_METADATA_BATCH, PM_REMOVE))
+                metadata_batch_free((MetadataBatch *)pending.lParam);
+        }
         KillTimer(window, 1);
         stop_playback();
         save_window_geometry(window);
         persist_last_directories();
         browser_listing_free(&panes[0].listing);
         browser_listing_free(&panes[1].listing);
+        free(panes[0].entry_index_by_id);
+        free(panes[1].entry_index_by_id);
         if (app_font != NULL) DeleteObject(app_font);
         if (app_bold_font != NULL) DeleteObject(app_bold_font);
         if (app_background_brush != NULL) DeleteObject(app_background_brush);

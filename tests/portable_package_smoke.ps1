@@ -8,8 +8,9 @@ $ErrorActionPreference = 'Stop'
 $package = (Resolve-Path -LiteralPath $PackageDirectory).Path
 $built = (Resolve-Path -LiteralPath $BuiltExecutable).Path
 $executableName = Split-Path -Leaf $built
-$isTrackerRelease = $executableName -match '^audiocommander_v(?:8|9|91|92)\.exe$'
-$isSkinRelease = $executableName -in @('audiocommander_v91.exe', 'audiocommander_v92.exe')
+$isV93 = $executableName -eq 'audiocommander_v93.exe'
+$isTrackerRelease = $executableName -match '^audiocommander_v(?:8|9|91|92|93)\.exe$'
+$isSkinRelease = $executableName -in @('audiocommander_v91.exe', 'audiocommander_v92.exe', 'audiocommander_v93.exe')
 $expectedFiles = @(
     $executableName,
     'avcodec-63.dll',
@@ -20,17 +21,33 @@ $expectedFiles = @(
     'PORTABLE_CONTENTS.txt',
     'README.txt',
     'source\build_ffmpeg_minimal.ps1',
-    'source\FFmpeg-c23123630e-source.zip',
     'source\ffmpeg_minimal_config.txt',
     'swresample-7.dll',
     'THIRD_PARTY_NOTICES.md'
 )
-if ($isTrackerRelease) {
+if ($isV93) {
+    $expectedFiles += @(
+        'libopenmpt.dll',
+        'libopenmpt-LICENSE.txt',
+        'mpg123-AUTHORS.txt',
+        'mpg123-LICENSE.txt',
+        'ogg-LICENSE.txt',
+        'openmpt-mpg123.dll',
+        'openmpt-ogg.dll',
+        'openmpt-vorbis.dll',
+        'openmpt-zlib.dll',
+        'vorbis-LICENSE.txt',
+        'zlib-LICENSE.txt'
+    )
+} elseif ($isTrackerRelease) {
     $expectedFiles += @(
         'libopenmpt-LICENSE.txt',
         'source\build_libopenmpt_small.txt',
         'source\libopenmpt-0.8.7+release.msvc.zip'
     )
+}
+if (-not $isV93) {
+    $expectedFiles += 'source\FFmpeg-c23123630e-source.zip'
 }
 if ($isSkinRelease) {
     $expectedFiles += @(
@@ -77,7 +94,7 @@ foreach ($line in $manifestLines) {
     }
     $verified++
 }
-$expectedManifestEntries = if ($isSkinRelease) { 23 } elseif ($isTrackerRelease) { 15 } else { 12 }
+$expectedManifestEntries = if ($isV93) { 30 } elseif ($isSkinRelease) { 23 } elseif ($isTrackerRelease) { 15 } else { 12 }
 if ($verified -ne $expectedManifestEntries) {
     throw "Expected $expectedManifestEntries manifest entries; verified $verified."
 }

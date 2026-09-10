@@ -2,27 +2,39 @@ cmake_minimum_required(VERSION 3.20)
 project(AudioCommander LANGUAGES C)
 
 set(FFMPEG_ROOT "${CMAKE_SOURCE_DIR}/third_party/ffmpeg-minimal-pack")
-set(OPENMPT_ROOT "${CMAKE_SOURCE_DIR}/third_party/libopenmpt-0.8.7-source")
-set(OPENMPT_LIB_DIR "${OPENMPT_ROOT}/build/lib/vs2022win10/x86_64/Release")
+set(OPENMPT_SOURCE_ROOT "${CMAKE_SOURCE_DIR}/third_party/libopenmpt-0.8.7-source")
+set(OPENMPT_DEV_ROOT "${CMAKE_SOURCE_DIR}/third_party/libopenmpt-0.8.7-dev")
+
+if(EXISTS "${OPENMPT_SOURCE_ROOT}/build/lib/vs2022win10/x86_64/Release/libopenmpt-small.lib")
+    set(OPENMPT_INCLUDE_ROOT "${OPENMPT_SOURCE_ROOT}")
+    set(OPENMPT_LIBRARIES
+        "${OPENMPT_SOURCE_ROOT}/build/lib/vs2022win10/x86_64/Release/libopenmpt-small.lib"
+        "${OPENMPT_SOURCE_ROOT}/build/lib/vs2022win10/x86_64/Release/openmpt-minimp3.lib"
+        "${OPENMPT_SOURCE_ROOT}/build/lib/vs2022win10/x86_64/Release/openmpt-miniz.lib"
+        "${OPENMPT_SOURCE_ROOT}/build/lib/vs2022win10/x86_64/Release/openmpt-stb_vorbis.lib")
+    set(OPENMPT_DYNAMIC FALSE)
+elseif(EXISTS "${OPENMPT_DEV_ROOT}/lib/amd64/libopenmpt.lib")
+    set(OPENMPT_INCLUDE_ROOT "${OPENMPT_DEV_ROOT}/inc")
+    set(OPENMPT_LIBRARIES "${OPENMPT_DEV_ROOT}/lib/amd64/libopenmpt.lib")
+    set(OPENMPT_DYNAMIC TRUE)
+else()
+    message(FATAL_ERROR "Neither the static libopenmpt build nor the local development package is available")
+endif()
 
 add_library(audiocommander_tracker STATIC src/tracker_support.c)
 target_compile_features(audiocommander_tracker PRIVATE c_std_11)
 target_compile_definitions(audiocommander_tracker PRIVATE
     UNICODE _UNICODE WIN32_LEAN_AND_MEAN)
 target_include_directories(audiocommander_tracker PUBLIC
-    src "${OPENMPT_ROOT}")
-target_link_libraries(audiocommander_tracker PUBLIC
-    "${OPENMPT_LIB_DIR}/libopenmpt-small.lib"
-    "${OPENMPT_LIB_DIR}/openmpt-minimp3.lib"
-    "${OPENMPT_LIB_DIR}/openmpt-miniz.lib"
-    "${OPENMPT_LIB_DIR}/openmpt-stb_vorbis.lib")
+    src "${OPENMPT_INCLUDE_ROOT}")
+target_link_libraries(audiocommander_tracker PUBLIC ${OPENMPT_LIBRARIES})
 if(MSVC)
     set_property(TARGET audiocommander_tracker PROPERTY
         MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     target_compile_options(audiocommander_tracker PRIVATE /W4 /permissive-)
 endif()
 
-add_executable(audiocommander_v92 WIN32
+add_executable(audiocommander_v93 WIN32
     src/app.c
     src/browser.c
     src/playlist.c
@@ -33,25 +45,41 @@ add_executable(audiocommander_v92 WIN32
     src/file_ops.c
     src/copy_progress.c
     src/localization.c
+    src/metadata_loader.c
     src/playback_mf.c
     src/playback_ffmpeg.c
     src/playback_openmpt.c
     src/app.rc
 )
 
-target_compile_features(audiocommander_v92 PRIVATE c_std_11)
-target_compile_definitions(audiocommander_v92 PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN)
-target_include_directories(audiocommander_v92 PRIVATE "${FFMPEG_ROOT}/include")
-target_link_directories(audiocommander_v92 PRIVATE "${FFMPEG_ROOT}/bin")
-target_link_libraries(audiocommander_v92 PRIVATE audiocommander_tracker comctl32 comdlg32 shell32 propsys uuid winmm mfplay mfplat mfuuid ole32 uxtheme avformat avcodec avutil swresample)
+target_compile_features(audiocommander_v93 PRIVATE c_std_11)
+target_compile_definitions(audiocommander_v93 PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN)
+target_include_directories(audiocommander_v93 PRIVATE "${FFMPEG_ROOT}/include")
+target_link_directories(audiocommander_v93 PRIVATE "${FFMPEG_ROOT}/bin")
+target_link_libraries(audiocommander_v93 PRIVATE audiocommander_tracker comctl32 comdlg32 shell32 propsys uuid winmm mfplay mfplat mfuuid ole32 uxtheme avformat avcodec avutil swresample)
 
 if(MSVC)
-    set_property(TARGET audiocommander_v92 PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    target_compile_options(audiocommander_v92 PRIVATE /W4 /permissive- /utf-8)
-    target_link_libraries(audiocommander_v92 PRIVATE delayimp)
-    target_link_options(audiocommander_v92 PRIVATE
+    set_property(TARGET audiocommander_v93 PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    target_compile_options(audiocommander_v93 PRIVATE /W4 /permissive- /utf-8)
+    target_link_libraries(audiocommander_v93 PRIVATE delayimp)
+    target_link_options(audiocommander_v93 PRIVATE
         /DELAYLOAD:avformat-63.dll /DELAYLOAD:avcodec-63.dll
         /DELAYLOAD:avutil-61.dll /DELAYLOAD:swresample-7.dll)
+endif()
+
+foreach(runtime IN ITEMS avcodec-63.dll avformat-63.dll avutil-61.dll swresample-7.dll)
+    add_custom_command(TARGET audiocommander_v93 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${FFMPEG_ROOT}/bin/${runtime}" "$<TARGET_FILE_DIR:audiocommander_v93>/${runtime}")
+endforeach()
+if(OPENMPT_DYNAMIC)
+    foreach(runtime IN ITEMS libopenmpt.dll openmpt-mpg123.dll openmpt-ogg.dll
+                             openmpt-vorbis.dll openmpt-zlib.dll)
+        add_custom_command(TARGET audiocommander_v93 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${OPENMPT_DEV_ROOT}/bin/amd64/${runtime}"
+            "$<TARGET_FILE_DIR:audiocommander_v93>/${runtime}")
+    endforeach()
 endif()
 
 file(COPY "${CMAKE_SOURCE_DIR}/skins" DESTINATION "${CMAKE_BINARY_DIR}")
@@ -160,18 +188,21 @@ if(BUILD_TESTING)
     target_link_libraries(settings_smoke PRIVATE gdi32 user32)
 
     add_executable(browser_sort_smoke
-        tests/browser_sort_smoke.c src/browser.c src/media_info.c)
-    target_include_directories(browser_sort_smoke PRIVATE src "${FFMPEG_ROOT}/include")
-    target_link_directories(browser_sort_smoke PRIVATE "${FFMPEG_ROOT}/bin")
+        tests/browser_sort_smoke.c src/browser.c)
+    target_include_directories(browser_sort_smoke PRIVATE src)
     target_compile_features(browser_sort_smoke PRIVATE c_std_11)
     target_compile_definitions(browser_sort_smoke PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN)
-    target_link_libraries(browser_sort_smoke PRIVATE audiocommander_tracker shell32 propsys uuid ole32
-        avformat avcodec avutil)
 
     add_executable(playlist_smoke tests/playlist_smoke.c src/playlist.c)
     target_include_directories(playlist_smoke PRIVATE src)
     target_compile_features(playlist_smoke PRIVATE c_std_11)
     target_compile_definitions(playlist_smoke PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN)
+
+    add_executable(metadata_loader_smoke
+        tests/metadata_loader_smoke.c src/metadata_loader.c)
+    target_include_directories(metadata_loader_smoke PRIVATE src)
+    target_compile_features(metadata_loader_smoke PRIVATE c_std_11)
+    target_compile_definitions(metadata_loader_smoke PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN)
 
     add_executable(sequential_playback_smoke
         tests/sequential_playback_smoke.c
@@ -200,29 +231,29 @@ if(BUILD_TESTING)
     target_compile_definitions(ui_command_helper PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN)
     target_link_libraries(ui_command_helper PRIVATE user32)
 
-    add_test(NAME v92_settings_smoke COMMAND settings_smoke)
-    add_test(NAME v92_file_ops_policy_smoke COMMAND file_ops_smoke)
-    add_test(NAME v92_copy_progress_smoke COMMAND copy_progress_smoke)
-    add_test(NAME v92_browser_sort_smoke COMMAND browser_sort_smoke)
-    add_test(NAME v92_playlist_smoke COMMAND playlist_smoke)
-    add_test(NAME v92_sequential_playback_smoke COMMAND sequential_playback_smoke)
-    add_test(NAME v92_playback_seek_smoke COMMAND playback_seek_smoke)
-    add_test(NAME v92_playback_stress COMMAND playback_stress)
-    add_test(NAME v92_localization_smoke COMMAND localization_smoke)
-    add_test(NAME v92_mod_playback_smoke COMMAND playback_smoke
+    add_test(NAME v93_settings_smoke COMMAND settings_smoke)
+    add_test(NAME v93_file_ops_policy_smoke COMMAND file_ops_smoke)
+    add_test(NAME v93_copy_progress_smoke COMMAND copy_progress_smoke)
+    add_test(NAME v93_browser_sort_smoke COMMAND browser_sort_smoke)
+    add_test(NAME v93_playlist_smoke COMMAND playlist_smoke)
+    add_test(NAME v93_metadata_loader_smoke COMMAND metadata_loader_smoke)
+    add_test(NAME v93_sequential_playback_smoke COMMAND sequential_playback_smoke)
+    add_test(NAME v93_playback_seek_smoke COMMAND playback_seek_smoke)
+    add_test(NAME v93_playback_stress COMMAND playback_stress)
+    add_test(NAME v93_localization_smoke COMMAND localization_smoke)
+    add_test(NAME v93_mod_playback_smoke COMMAND playback_smoke
         "${CMAKE_SOURCE_DIR}/Audio/AXELF.MOD" 3000)
-    add_test(NAME v92_s3m_playback_smoke COMMAND playback_smoke
+    add_test(NAME v93_s3m_playback_smoke COMMAND playback_smoke
         "${CMAKE_SOURCE_DIR}/Audio/AQUA.S3M" 3000)
-    add_test(NAME v92_xm_playback_smoke COMMAND playback_smoke
+    add_test(NAME v93_xm_playback_smoke COMMAND playback_smoke
         "${CMAKE_SOURCE_DIR}/Audio/BUTTERFL.XM" 3000)
-    add_test(NAME v92_mod_media_info_smoke COMMAND media_info_smoke
+    add_test(NAME v93_mod_media_info_smoke COMMAND media_info_smoke
         "${CMAKE_SOURCE_DIR}/Audio/AXELF.MOD" 637440)
-    add_test(NAME v92_s3m_media_info_smoke COMMAND media_info_smoke
+    add_test(NAME v93_s3m_media_info_smoke COMMAND media_info_smoke
         "${CMAKE_SOURCE_DIR}/Audio/AQUA.S3M" 152080)
-    add_test(NAME v92_xm_media_info_smoke COMMAND media_info_smoke
+    add_test(NAME v93_xm_media_info_smoke COMMAND media_info_smoke
         "${CMAKE_SOURCE_DIR}/Audio/BUTTERFL.XM" 173275)
-    add_test(NAME v92_corrupt_tracker_smoke COMMAND tracker_corrupt_smoke
-        "${CMAKE_SOURCE_DIR}/tests/corrupt.mod")
+    add_test(NAME v93_corrupt_tracker_smoke COMMAND tracker_corrupt_smoke)
 
     if(MSVC)
         foreach(test_target playback_stress playback_seek_smoke
@@ -244,9 +275,8 @@ if(BUILD_TESTING)
         target_compile_options(settings_smoke PRIVATE /W4 /permissive-)
         set_property(TARGET browser_sort_smoke PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         target_compile_options(browser_sort_smoke PRIVATE /W4 /permissive-)
-        target_link_libraries(browser_sort_smoke PRIVATE delayimp)
-        target_link_options(browser_sort_smoke PRIVATE
-            /DELAYLOAD:avformat-63.dll /DELAYLOAD:avcodec-63.dll /DELAYLOAD:avutil-61.dll)
+        set_property(TARGET metadata_loader_smoke PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        target_compile_options(metadata_loader_smoke PRIVATE /W4 /permissive-)
         set_property(TARGET playlist_smoke PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         target_compile_options(playlist_smoke PRIVATE /W4 /permissive-)
         set_property(TARGET localization_smoke PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

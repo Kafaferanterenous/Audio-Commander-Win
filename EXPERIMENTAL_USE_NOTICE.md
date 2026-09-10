@@ -1,5 +1,7 @@
 # Experimental software notice
 
+> **Use at your own risk.**
+
 This repository contains personal experimental work created for learning,
 prototyping, and the author's own use. It is not a supported product, safety-
 critical system, security product, backup guarantee, trading system, or
