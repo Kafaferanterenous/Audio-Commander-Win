@@ -1,6 +1,10 @@
-# AudioCommander v9.3
+# Audio Commander Win
 
-AudioCommander is an experimental portable Windows dual-pane audio file
+Latest release: **v9.3**
+
+![Audio Commander Win v9.3 with two empty demo folders](docs/audio-commander-win-v9.3.png)
+
+Audio Commander Win is an experimental portable Windows dual-pane audio file
 browser and player written in C11 and Win32.
 
 > **Use at your own risk.** This software is provided as-is, without guarantees

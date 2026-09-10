@@ -41,3 +41,13 @@ not run without separate authorization for audio output and a GUI launch.
   - SHA-256 `39162389E09EA5DB44B2A8824E45BCCDEEF383F30B4721A9DAC3ED5F0234B5C9`
 
 The v9.2 executable and portable ZIP remain untouched.
+
+## GitHub release update
+
+- The private GitHub portable folder contains 31 files; all 30 listed package
+  hashes verify. Two upstream source archives were omitted because their test
+  trees contain media files.
+- A screenshot was captured and visually reviewed from a fresh isolated copy
+  pointed at two empty demo folders.
+- No audio or music file was loaded, played, copied, staged, or uploaded during
+  the screenshot and GitHub update.

@@ -1,6 +1,9 @@
 AudioCommander v9.3 portable
 ============================
 
+USE AT YOUR OWN RISK. This experimental software is provided as-is, without
+guarantees or warranties. Back up important data before use.
+
 Quick start
 -----------
 

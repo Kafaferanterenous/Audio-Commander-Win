@@ -3,10 +3,11 @@
 This repository is prepared from a Windows-local experimental workspace.
 
 Included: source code, project documentation, build scripts, sanitised test
-fixtures, and compiled artifacts only where their origin and redistribution
-terms are documented in the repository.
+fixtures, privacy-reviewed application screenshots, and compiled artifacts
+only where their origin and redistribution terms are documented in the
+repository.
 
-Excluded: screenshots and screen recordings, real device exports, messages,
+Excluded: unreviewed screenshots and all screen recordings, real device exports, messages,
 contacts, call logs, photos, identifiers, credentials, private paths, logs,
 imports, caches, editor metadata, generated build trees, unrelated third-party
 source trees, installers/drivers with unclear redistribution rights, and
